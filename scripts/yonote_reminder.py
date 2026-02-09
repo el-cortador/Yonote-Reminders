@@ -47,6 +47,29 @@ def send_telegram_message(text):
     if not resp.ok:
         print(f"⚠️ Ошибка отправки в Telegram: {resp.text}", file=sys.stderr)
 
+def debug_print_rows(rows):
+    """Отладочный вывод всех строк (только при ручном запуске)."""
+    if os.getenv("GITHUB_EVENT_NAME") != "workflow_dispatch":
+        return
+
+    print(f"\n🔍 DEBUG: Сегодня — {TODAY}")
+    print(f"📥 Получено строк: {len(rows)}\n")
+
+    for i, row in enumerate(rows, 1):
+        title = row.get("title") or "Без названия"
+        values = row.get("values", {})
+        status_ids = values.get(STATUS_PROP_ID, [])
+        deadline_data = values.get(DEADLINE_PROP_ID)
+
+        date_str = deadline_data.get("from") if isinstance(deadline_data, dict) else None
+        deadline = parse_date(date_str) if date_str else None
+        days_diff = (deadline - TODAY).days if deadline else None
+
+        print(f"{i}. {title}")
+        print(f"   Статусы: {status_ids}")
+        print(f"   Дедлайн: {date_str} → parsed={deadline}, diff={days_diff}")
+        print()
+
 def main():
     # 1. Запрос к Yonote
     url = "https://app.yonote.ru/api/database.rows.list"
@@ -70,6 +93,9 @@ def main():
 
     data = resp.json()
     rows = data.get("data", [])
+
+    # Отладка (только при ручном запуске)
+    debug_print_rows(rows)
 
     messages = []
 
